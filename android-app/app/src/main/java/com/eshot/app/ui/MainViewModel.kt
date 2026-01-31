@@ -30,9 +30,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun loadData() {
         viewModelScope.launch {
-            val stopList = repository.loadStops()
-            _stops.value = stopList
-            repository.loadLines()
+            try {
+                val stopList = repository.loadStops()
+                _stops.value = stopList
+                repository.loadLines()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // Optionally handle error state here
+            }
         }
     }
 

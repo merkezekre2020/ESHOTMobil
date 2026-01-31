@@ -30,6 +30,12 @@ class CsvParser {
 
             var line = reader.readLine()
             while (line != null) {
+                val trimmedLine = line.trim()
+                if (trimmedLine.isEmpty()) {
+                    line = reader.readLine()
+                    continue
+                }
+                
                 val parts = line.split(delimiter).map { it.trim() }
                 // Ensure we have enough parts for the critical indices
                 val maxRequiredIndex = maxOf(idIndex, latIndex, lonIndex)
@@ -79,6 +85,12 @@ class CsvParser {
 
             var line = reader.readLine()
             while (line != null) {
+                val trimmedLine = line.trim()
+                if (trimmedLine.isEmpty()) {
+                    line = reader.readLine()
+                    continue
+                }
+                
                 val parts = line.split(delimiter).map { it.trim() }
                  if (parts.size > idIndex) {
                     lines.add(Line(

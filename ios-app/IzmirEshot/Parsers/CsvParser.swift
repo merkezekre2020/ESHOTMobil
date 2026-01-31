@@ -27,7 +27,10 @@ class CsvParser {
         let criticalMaxIndex = [idIndex, latIndex, lonIndex].max() ?? 0
 
         for line in lines {
-            let parts = line.components(separatedBy: delimiter)
+            let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmedLine.isEmpty { continue }
+            
+            let parts = line.components(separatedBy: delimiter).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             if parts.count > criticalMaxIndex {
                 // indices are valid
                 let latStr = parts[latIndex].replacingOccurrences(of: ",", with: ".")
@@ -71,7 +74,10 @@ class CsvParser {
         var lineList: [Line] = []
         
         for row in lines {
-            let parts = row.components(separatedBy: delimiter)
+            let trimmedRow = row.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmedRow.isEmpty { continue }
+            
+            let parts = row.components(separatedBy: delimiter).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             if parts.count > idIndex {
                  let id = parts[idIndex]
                  let name = (nameIndex != -1 && nameIndex < parts.count) ? parts[nameIndex] : ""
@@ -111,6 +117,23 @@ class CsvParser {
 
 extension String {
     func toDouble() -> Double? {
-        return Double(self)
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.decimalSeparator = "."
+        formatter.groupingSeparator = ","
+        
+        // First try standard parsing
+        if let double = Double(self) {
+            return double
+        }
+        
+        // Then try formatter
+        if let number = formatter.number(from: self) {
+            return number.doubleValue
+        }
+        
+        // Try replacing commas with periods
+        let normalizedString = self.replacingOccurrences(of: ",", with: ".")
+        return Double(normalizedString)
     }
 }
