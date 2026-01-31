@@ -15,16 +15,16 @@ Developed with **NO Cross-Platform** tools (SwiftUI & Jetpack Compose).
    - **Note**: No Release Keystore is configured. Debug signing is automatic.
 
 ## iOS Setup
-1. Create a new Xcode Project named "IzmirEshot" in the `ios-app` folder.
-   - **Alternative**: Open `Package.swift` in Xcode directly to view sources and build the package.
-2. Ensure `IzmirEshotApp.swift` is the target membership if creating a Project manually.
-3. **Build Settings**:
-   - Set "Code Signing Identity" to "Sign to Run Locally" or None.
-   - Set `CODE_SIGNING_ALLOWED=NO` in User-Defined settings if building continuously.
-4. Run on **Simulator**. (Physical device requires valid signing).
+1. **Project Generation**: This project uses `XcodeGen`.
+   - Install: `brew install xcodegen`
+   - Run: `xcodegen` in the `ios-app` folder.
+   - Open `IzmirEshot.xcodeproj`.
+2. **Build Settings**:
+   - The generated project is configured for Unsigned builds (`CODE_SIGNING_ALLOWED=NO`).
+3. Run on **Simulator**.
 
-### CI/CD Notes
-The included workflow uses `swift build` via Swift Package Manager to verify compilation and tests without needing a generated `.xcodeproj`.
+### CI/CD
+The GitHub Actions workflow automatically installs `xcodegen` and generates the project before building.
 
 ## Features
 - **Maps**:

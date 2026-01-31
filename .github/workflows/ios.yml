@@ -15,18 +15,25 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-
-    # Need to generate an Xcode Project if it doesn't exist?
-    # Since we only created source files, xcodebuild will fail without a project file.
-    # However, for the purpose of this task which requested "Kod: ÇALIŞIR seviyede tam dosyalar" and "Unsigned build komutları",
-    # I will assume the user (technical lead) will create the project container or that we are simulating the source delivery.
-    # BUT the prompt asked for the workflow file.
-    # I will add a step that assumes 'IzmirEshot.xcodeproj' exists or tries to run 'swift build' as fallback if applicable, 
-    # but 'xcodebuild' was strictly requested.
-    # I will document this in README.
     
-    - name: Build and Test (SPM)
+    - name: Install XcodeGen
+      run: brew install xcodegen
+
+    - name: Generate Xcode Project
+      run: xcodegen
+    
+    - name: Build and Test (Simulator)
       run: |
-        # Using Swift Package Manager since .xcodeproj is not committed
-        swift build -v
-        swift test -v
+        xcodebuild build test \
+          -scheme IzmirEshot \
+          -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
+          CODE_SIGNING_ALLOWED=NO \
+          CODE_SIGN_IDENTITY="" \
+          DEVELOPMENT_TEAM="" \
+          -allowProvisioningUpdates
+
+    - name: Upload App
+      uses: actions/upload-artifact@v4
+      with:
+        name: ios-app
+        path: ios-app/DerivedData/Build/Products/Debug-iphonesimulator/IzmirEshot.app
