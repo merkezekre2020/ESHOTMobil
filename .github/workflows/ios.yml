@@ -26,7 +26,7 @@ jobs:
       run: |
         xcodebuild build test \
           -scheme IzmirEshot \
-          -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
+          -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
           CODE_SIGNING_ALLOWED=NO \
           CODE_SIGN_IDENTITY="" \
           DEVELOPMENT_TEAM="" \
