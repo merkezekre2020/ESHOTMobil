@@ -1,0 +1,6 @@
+{
+  "stops_csv": "https://openfiles.izmir.bel.tr/211488/docs/eshot-otobus-duraklari.csv",
+  "lines_csv": "https://openfiles.izmir.bel.tr/211488/docs/eshot-otobus-hatlari.csv",
+  "nearby_stops_api": "https://openapi.izmir.bel.tr/api/ibb/cbs/noktayayakinduraklar?x={lon}&y={lat}&inCoordSys=WGS84&outCoordSys=WGS84",
+  "approaching_buses_api": "https://openapi.izmir.bel.tr/api/iztek/duragayaklasanotobusler/{durakId}"
+}
