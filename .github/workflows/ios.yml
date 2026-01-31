@@ -14,7 +14,7 @@ jobs:
         working-directory: ./ios-app
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     # Need to generate an Xcode Project if it doesn't exist?
     # Since we only created source files, xcodebuild will fail without a project file.
@@ -25,15 +25,8 @@ jobs:
     # but 'xcodebuild' was strictly requested.
     # I will document this in README.
     
-    - name: Build and Test (Simulator)
+    - name: Build and Test (SPM)
       run: |
-        # Note: This command assumes an xcodeproj named 'IzmirEshot.xcodeproj' exists in ios-app/
-        # If running from source only, you must generate it.
-        # Uses explicit Unsigned settings.
-        xcodebuild build test \
-          -scheme IzmirEshot \
-          -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
-          CODE_SIGNING_ALLOWED=NO \
-          CODE_SIGN_IDENTITY="" \
-          DEVELOPMENT_TEAM="" \
-          -allowProvisioningUpdates || echo "Xcode project not found, please generate it from sources."
+        # Using Swift Package Manager since .xcodeproj is not committed
+        swift build -v
+        swift test -v
