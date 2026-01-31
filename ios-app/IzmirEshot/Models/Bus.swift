@@ -26,8 +26,4 @@ struct BusDto: Codable {
     }
 }
 
-extension String {
-    func toDouble() -> Double? {
-        return Double(self)
-    }
-}
+
