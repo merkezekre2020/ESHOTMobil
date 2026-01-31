@@ -31,6 +31,10 @@ class Repository: ObservableObject {
          if !fileManager.fileExists(atPath: fileURL.path) {
              await downloadFile(url: "https://openfiles.izmir.bel.tr/211488/docs/eshot-otobus-hatlari.csv", to: fileURL)
          }
+         
+         if let data = try? Data(contentsOf: fileURL) {
+            self.lines = parser.parseLines(data: data)
+         }
     }
     
     func getApproachingBuses(stopId: String) async -> [BusDto] {
@@ -43,10 +47,17 @@ class Repository: ObservableObject {
     }
     
     private func downloadFile(url: String, to destination: URL) async {
-        guard let url = URL(string: url) else { return }
+        guard let urlObj = URL(string: url) else { return }
+        var request = URLRequest(url: urlObj)
+        request.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1", forHTTPHeaderField: "User-Agent")
+        
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            try data.write(to: destination)
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) {
+                 try data.write(to: destination)
+            } else {
+                print("Server returned error for \(url)")
+            }
         } catch {
             print("Download error: \(error)")
         }

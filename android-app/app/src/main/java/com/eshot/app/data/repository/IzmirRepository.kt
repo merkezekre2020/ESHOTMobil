@@ -11,6 +11,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.IOException
+import java.net.HttpURLConnection
 import java.net.URL
 
 class IzmirRepository(private val context: Context) {
@@ -27,8 +29,16 @@ class IzmirRepository(private val context: Context) {
         if (cachedStops.isNotEmpty() && !forceRefresh) return cachedStops
         
         return withContext(Dispatchers.IO) {
-            if (!stopsCacheFile.exists() || forceRefresh) {
-                downloadFile("https://openfiles.izmir.bel.tr/211488/docs/eshot-otobus-duraklari.csv", stopsCacheFile)
+            val fileExists = stopsCacheFile.exists()
+            if (!fileExists || forceRefresh) {
+                try {
+                    downloadFile("https://openfiles.izmir.bel.tr/211488/docs/eshot-otobus-duraklari.csv", stopsCacheFile)
+                } catch (e: Exception) {
+                    // If we don't have the file and download fails, we must throw
+                    if (!fileExists) throw e 
+                    // If we have the file but refresh failed, ignore error and use cache
+                    e.printStackTrace() 
+                }
             }
             cachedStops = csvParser.parseStops(FileInputStream(stopsCacheFile))
             cachedStops
@@ -39,8 +49,14 @@ class IzmirRepository(private val context: Context) {
          if (cachedLines.isNotEmpty() && !forceRefresh) return cachedLines
          
          return withContext(Dispatchers.IO) {
-             if (!linesCacheFile.exists() || forceRefresh) {
-                 downloadFile("https://openfiles.izmir.bel.tr/211488/docs/eshot-otobus-hatlari.csv", linesCacheFile)
+             val fileExists = linesCacheFile.exists()
+             if (!fileExists || forceRefresh) {
+                 try {
+                     downloadFile("https://openfiles.izmir.bel.tr/211488/docs/eshot-otobus-hatlari.csv", linesCacheFile)
+                 } catch (e: Exception) {
+                     if (!fileExists) throw e
+                     e.printStackTrace()
+                 }
              }
              cachedLines = csvParser.parseLines(FileInputStream(linesCacheFile))
              cachedLines
@@ -53,15 +69,32 @@ class IzmirRepository(private val context: Context) {
         }
     }
 
-    private fun downloadFile(url: String, dest: File) {
+    private fun downloadFile(urlStr: String, dest: File) {
+        var connection: HttpURLConnection? = null
         try {
-            URL(url).openStream().use { input ->
-                FileOutputStream(dest).use { output ->
-                    input.copyTo(output)
+            val url = URL(urlStr)
+            connection = url.openConnection() as HttpURLConnection
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 15000
+            connection.readTimeout = 15000
+            // Set User-Agent to avoid 403 Forbidden from some strict servers
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Android 10; Mobile; rv:88.0) Gecko/88.0 Firefox/88.0")
+            
+            connection.connect()
+            
+            if (connection.responseCode in 200..299) {
+                connection.inputStream.use { input ->
+                    FileOutputStream(dest).use { output ->
+                        input.copyTo(output)
+                    }
                 }
+            } else {
+                throw IOException("Server returned ${connection.responseCode} for $urlStr")
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            throw IOException("Download failed: ${e.message}", e)
+        } finally {
+            connection?.disconnect()
         }
     }
 }

@@ -3,10 +3,10 @@ import Foundation
 class CsvParser {
     
     func parseStops(data: Data) -> [Stop] {
-        guard let content = decodeData(data) else { return [] }
+        guard let content = decodeData(data) else { return [] } 
         
         var lines = content.components(separatedBy: .newlines)
-        if lines.isEmpty { return [] }
+        if lines.isEmpty { return [] } 
         
         let headerLine = lines.removeFirst()
         let delimiter = detectDelimiter(headerLine)
@@ -24,42 +24,78 @@ class CsvParser {
         
         var stops: [Stop] = []
         
+        let criticalMaxIndex = [idIndex, latIndex, lonIndex].max() ?? 0
+
         for line in lines {
             let parts = line.components(separatedBy: delimiter)
-            if parts.count >= headers.count { // Lenient
-                let latIndex = latIndex < parts.count ? latIndex : -1
-                let lonIndex = lonIndex < parts.count ? lonIndex : -1
+            if parts.count > criticalMaxIndex {
+                // indices are valid
+                let latStr = parts[latIndex].replacingOccurrences(of: ",", with: ".")
+                let lonStr = parts[lonIndex].replacingOccurrences(of: ",", with: ".")
                 
-                if latIndex != -1, lonIndex != -1,
-                   let lat = parts[latIndex].replacingOccurrences(of: ",", with: ".").toDouble(),
-                   let lon = parts[lonIndex].replacingOccurrences(of: ",", with: ".").toDouble() {
+                if let lat = latStr.toDouble(), let lon = lonStr.toDouble() {
+                    
+                    let name = (nameIndex != -1 && nameIndex < parts.count) ? parts[nameIndex] : "Unknown"
+                    let lineIds = (linesIndex != -1 && linesIndex < parts.count) ? parts[linesIndex] : ""
                     
                     stops.append(Stop(
                         id: parts[idIndex],
-                        name: nameIndex != -1 ? parts[nameIndex] : "Unknown",
+                        name: name,
                         latitude: lat,
                         longitude: lon,
-                        lineIds: linesIndex != -1 ? parts[linesIndex] : ""
+                        lineIds: lineIds
                     ))
                 }
             }
         }
         return stops
     }
+
+    func parseLines(data: Data) -> [Line] {
+        guard let content = decodeData(data) else { return [] }
+        var lines = content.components(separatedBy: .newlines)
+        if lines.isEmpty { return [] }
+        
+        let headerLine = lines.removeFirst()
+        let delimiter = detectDelimiter(headerLine)
+        
+        let headers = headerLine.components(separatedBy: delimiter).map { $0.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() }
+        
+        guard let idIndex = headers.firstIndex(where: { $0 == "HAT_NO" || $0.contains("ID") }) else { return [] }
+        
+        let nameIndex = headers.firstIndex(where: { $0 == "HAT_ADI" || $0.contains("NAME") }) ?? -1
+        let descIndex = headers.firstIndex(where: { $0.contains("GUZERGAH") }) ?? -1
+        let startIndex = headers.firstIndex(where: { $0.contains("BASLANGIC") }) ?? -1
+        let endIndex = headers.firstIndex(where: { $0.contains("BITIS") }) ?? -1
+        
+        var lineList: [Line] = []
+        
+        for row in lines {
+            let parts = row.components(separatedBy: delimiter)
+            if parts.count > idIndex {
+                 let id = parts[idIndex]
+                 let name = (nameIndex != -1 && nameIndex < parts.count) ? parts[nameIndex] : ""
+                 let desc = (descIndex != -1 && descIndex < parts.count) ? parts[descIndex] : ""
+                 let start = (startIndex != -1 && startIndex < parts.count) ? parts[startIndex] : ""
+                 let end = (endIndex != -1 && endIndex < parts.count) ? parts[endIndex] : ""
+                 
+                 lineList.append(Line(id: id, name: name, description: desc, startStop: start, endStop: end))
+            }
+        }
+        return lineList
+    }
     
     private func decodeData(_ data: Data) -> String? {
-        // Try UTF-8
         if let utf8 = String(data: data, encoding: .utf8) {
             return utf8
         }
-        // Try Windows-1254 (No native constant, use validation or Latin5/ISO-8859-9 approximation)
-        // Swift ISOLatin5 (8859-9) is closest to 1254
-        if let latin5 = String(data: data, encoding: .isoLatin1) { // Fallback to compatible western
-            return latin5 
+        // Fallback for Windows-1254 (Turkish)
+        // Using ISOLatin1 as a poor man's fallback if 1254 isn't available easily
+        // In a real iOS app, we would use CFStringConvertEncodingToNSStringEncoding(kCFStringEncodingWindowsLatin5)
+        if let latin1 = String(data: data, encoding: .isoLatin1) {
+            return latin1 
         }
-        // WindowsCP1254 = 0x800004e6 ? No, simpler to just treat as ASCII if all else fails or map manually.
-        // Actually, we can use String(encodings: ...)
-        return String(data: data, encoding: .windowsCP1252) // Close enough often
+        return String(data: data, encoding: .windowsCP1252)
     }
     
     private func detectDelimiter(_ line: String) -> String {

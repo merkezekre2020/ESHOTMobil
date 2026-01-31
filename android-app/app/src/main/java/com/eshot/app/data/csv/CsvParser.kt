@@ -31,7 +31,10 @@ class CsvParser {
             var line = reader.readLine()
             while (line != null) {
                 val parts = line.split(delimiter).map { it.trim() }
-                if (parts.size >= headers.size) { // Lenient check, need enough parts for required fields
+                // Ensure we have enough parts for the critical indices
+                val maxRequiredIndex = maxOf(idIndex, latIndex, lonIndex)
+                
+                if (parts.size > maxRequiredIndex) {
                    try {
                        val lat = parts.getOrNull(latIndex)?.replace(",", ".")?.toDoubleOrNull()
                        val lon = parts.getOrNull(lonIndex)?.replace(",", ".")?.toDoubleOrNull()
@@ -39,10 +42,10 @@ class CsvParser {
                        if (lat != null && lon != null) {
                            stops.add(Stop(
                                id = parts.getOrNull(idIndex) ?: "Unknown",
-                               name = parts.getOrNull(nameIndex) ?: "Unknown Stop",
+                               name = if (nameIndex != -1) parts.getOrNull(nameIndex) ?: "Unknown Stop" else "Unknown Stop",
                                latitude = lat,
                                longitude = lon,
-                               lineIds = parts.getOrNull(linesIndex) ?: ""
+                               lineIds = if (linesIndex != -1) parts.getOrNull(linesIndex) ?: "" else ""
                            ))
                        }
                    } catch (e: Exception) {
@@ -77,13 +80,13 @@ class CsvParser {
             var line = reader.readLine()
             while (line != null) {
                 val parts = line.split(delimiter).map { it.trim() }
-                 if (parts.isNotEmpty()) {
+                 if (parts.size > idIndex) {
                     lines.add(Line(
                         id = parts.getOrNull(idIndex) ?: "",
-                        name = parts.getOrNull(nameIndex) ?: "",
-                        description = parts.getOrNull(descIndex) ?: "",
-                        startStop = parts.getOrNull(startIndex) ?: "",
-                        endStop = parts.getOrNull(endIndex) ?: ""
+                        name = if (nameIndex != -1) parts.getOrNull(nameIndex) ?: "" else "",
+                        description = if (descIndex != -1) parts.getOrNull(descIndex) ?: "" else "",
+                        startStop = if (startIndex != -1) parts.getOrNull(startIndex) ?: "" else "",
+                        endStop = if (endIndex != -1) parts.getOrNull(endIndex) ?: "" else ""
                     ))
                  }
                 line = reader.readLine()
@@ -107,10 +110,17 @@ class CsvParser {
         
         // Detect Encoding
         var charset = Charset.forName("UTF-8")
-        val previewString = String(buffer, 0, read, charset)
-        
-        if (previewString.contains("")) {
-             charset = Charset.forName("windows-1254")
+        try {
+            val decoder = charset.newDecoder()
+            decoder.decode(java.nio.ByteBuffer.wrap(buffer, 0, read))
+        } catch (e: Exception) {
+             // Fallback to Turkish Windows-1254 if UTF-8 fails
+             try {
+                 charset = Charset.forName("windows-1254")
+             } catch (unsupported: Exception) {
+                 // If 1254 is not supported on this device, fallback to ISO-8859-9 or default
+                 charset = Charset.defaultCharset()
+             }
         }
         
         // Detect Delimiter from preview
